@@ -17,22 +17,22 @@ jobs:
 
       - id: diff
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
           else
-            BASE_SHA="$(git rev-parse HEAD~1)"
+            BASE=$(git rev-parse HEAD~1)
           fi
 
-          MODIFIED=$(git diff --name-only $BASE_SHA HEAD -- \
-                      'sources/**/*.{md,mdx,yml,yaml,json}' | tr '\n' ' ')
-          echo "files=$MODIFIED" >> "$GITHUB_OUTPUT"
+          MODIFIED=$(git diff --name-only "$BASE" HEAD \
+            | grep -E '^sources/.*\.(md|ya?ml|json)$' || true)
+
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$MODIFIED" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-
-      - run: npm ci
 
       - name: Run validator
         if: steps.diff.outputs.files != ''
