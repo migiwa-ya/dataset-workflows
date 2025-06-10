@@ -36,7 +36,10 @@ jobs:
 
       - name: Run validator
         if: steps.diff.outputs.files != ''
-        run: npx @migiwa-ya/data-validator ${{ steps.diff.outputs.files }} --schema schema.json
+        run: |
+          FILES="${{ steps.diff.outputs.files }}"
+          FILES="${FILES//$'\n'/ }"
+          npx @migiwa-ya/data-validator $FILES --schema schema.json
 
       - name: No changes
         if: steps.diff.outputs.files == ''
