@@ -1,0 +1,43 @@
+name: validate-reusable
+
+on:
+  workflow_call:
+    inputs:
+      schema:
+        required: true
+        type: string
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="$(git rev-parse HEAD~1)"
+          fi
+
+          MODIFIED=$(git diff --name-only $BASE_SHA HEAD -- \
+                      'sources/**/*.{md,mdx,yml,yaml,json}' | tr '\n' ' ')
+          echo "files=$MODIFIED" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Run validator
+        if: steps.diff.outputs.files != ''
+        run: npx @migiwa-ya/data-validator ${{ steps.diff.outputs.files }} --schema schema.json
+
+      - name: No changes
+        if: steps.diff.outputs.files == ''
+        run: echo "No source changes detected; skipping validation."
